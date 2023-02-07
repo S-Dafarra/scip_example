@@ -32,6 +32,11 @@ if(MSVC)
     set(CMAKE_DEBUG_POSTFIX "d")
 endif()
 
+if(WIN32)
+  # MSVC standard library doesn't include things like M_PI_2 without this
+  add_definitions(-D_USE_MATH_DEFINES)
+endif()
+
 # Build position independent code.
 # Position Independent Code (PIC) is commonly used for shared libraries so that
 # the same shared library code can be loaded in each program address space in a
@@ -94,6 +99,8 @@ if(NOT CMAKE_CONFIGURATION_TYPES)
         set_property(CACHE CMAKE_BUILD_TYPE PROPERTY VALUE "Release")
     endif()
 endif()
+
+find_package(scip REQUIRED)
 
 ### Compile- and install-related commands.
 add_subdirectory(src)
