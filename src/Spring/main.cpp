@@ -2,10 +2,8 @@
 
 #include <stdio.h>
 #include <math.h>
-#include <sstream>
 
-#include <scip/scip.h>
-#include <scip/scipdefplugins.h>
+#include <scipcpp/Solver.h>
 
 /* Model parameters */
 
@@ -373,110 +371,39 @@ SCIP_RETCODE setupProblem(
    return SCIP_OKAY;
 }
 
-class SCIPinstance
-{
-    SCIP* scip{nullptr};
-
-public:
-
-    class Log
-    {
-        SCIP* m_scip{nullptr};
-        FILE* m_file{nullptr};
-        typedef void(*log_function)(SCIP* instance, FILE* file, const char* formatstr, ...);
-        log_function m_outputLog;
-        std::stringstream m_output;
-
-        Log(log_function outputLog, SCIP* instance, FILE* file)
-            : m_scip(instance)
-            , m_file(file)
-            , m_outputLog(outputLog)
-        {}
-
-        friend class SCIPinstance;
-
-
-    public:
-
-        Log(Log&& other)
-            : m_scip(other.m_scip)
-            , m_file(other.m_file)
-            , m_outputLog(other.m_outputLog)
-            , m_output(std::move(other.m_output))
-        {
-            other.m_scip = nullptr;
-        }
-
-        std::ostream& operator<<(const std::stringstream& input)
-        {
-            return m_output << input.str();
-        }
-
-        std::ostream& operator<<(const std::string& input)
-        {
-            return m_output << input;
-        }
-
-        ~Log()
-        {
-            if (m_scip)
-                m_outputLog(m_scip, m_file, "%s\n", m_output.str().c_str());
-        }
-    };
-
-
-    SCIPinstance()
-    {
-        SCIP_CALL_ABORT(SCIPcreate(&scip));
-        SCIP_CALL_ABORT(SCIPincludeDefaultPlugins(scip));
-    }
-
-    ~SCIPinstance()
-    {
-        SCIP_CALL_ABORT(SCIPfree(&scip));
-    }
-
-    SCIP* get()
-    {
-        return scip;
-    }
-
-    Log info(FILE* file = NULL)
-    {
-        return Log(&SCIPinfoMessage, scip, file);
-    }
-};
-
 /** runs spring example */
 static
 SCIP_RETCODE runSpring(void)
 {
-   SCIPinstance scipSolver;
+   SCIPCPP::Solver scipSolver;
 
-   scipSolver.info(); //new line
-   scipSolver.info() << "************************************************";
-   scipSolver.info() << "* Running Coil Compression Spring Design Model *";
-   scipSolver.info() << "************************************************";
-   scipSolver.info();
+   scipSolver.info() << std::endl;
+   scipSolver.info() << "************************************************" << std::endl;
+   scipSolver.info() << "* Running Coil Compression Spring Design Model *" << std::endl;
+   scipSolver.info() << "************************************************" << std::endl;
+   scipSolver.info() << std::endl;
 
    SCIP_CALL( setupProblem(scipSolver.get()) );
 
-   scipSolver.info() << "Original problem:";
-   SCIP_CALL( SCIPprintOrigProblem(scipSolver.get(), NULL, "cip", FALSE) );
+   scipSolver.info() << "Original problem:" << std::endl;
+   SCIP_CALL( scipSolver.printOrigProblem() );
+   scipSolver.info() << std::endl;
 
-   SCIPinfoMessage(scipSolver.get(), NULL, "\n");
-   SCIP_CALL( SCIPpresolve(scipSolver.get()) );
+   SCIP_CALL( scipSolver.presolve() );
 
-   SCIPinfoMessage(scipSolver.get(), NULL, "Reformulated problem:\n");
-   SCIP_CALL( SCIPprintTransProblem(scipSolver.get(), NULL, "cip", FALSE) );
+   scipSolver.info() << "Reformulated problem:" << std::endl;
 
-   SCIPinfoMessage(scipSolver.get(), NULL, "\nSolving...\n");
-   SCIP_CALL( SCIPsolve(scipSolver.get()) );
+   SCIP_CALL( scipSolver.printTransProblem() );
 
-   if( SCIPgetNSols(scipSolver.get()) > 0 )
+   scipSolver.info() << std::endl << "Solving..." << std::endl;
+
+   SCIP_CALL( scipSolver.solve() );
+
+   if( scipSolver.getNSols() > 0 )
    {
-      SCIPinfoMessage(scipSolver.get(), NULL, "\nSolution:\n");
-      SCIP_CALL( SCIPprintSol(scipSolver.get(), SCIPgetBestSol(scipSolver.get()), NULL, FALSE) );
+      scipSolver.info() << std::endl << "Solution:" << std::endl;
+
+      SCIP_CALL( scipSolver.getBestSol().print(NULL, SCIPCPP::PrintZeros::No) );
    }
 
    return SCIP_OKAY;
